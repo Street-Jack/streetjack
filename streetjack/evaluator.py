@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+import random
 import itertools
 from typing import List, Set, Tuple
 
@@ -14,14 +15,11 @@ class Evaluator():
     def __init__(self):
         self.evaluator = treys.Evaluator()
     
-    def effective_hand_strength(self, hand: List[int], board: List[int]) -> float:
+    def effective_hand_strength(self, hand: List[int], board: List[int], shit) -> float:
         hand_strength = self._hand_strenght(hand, board)
-        ppot, npot = self._hand_potential(hand, board)
-        print(ppot, npot)
+        ppot, npot = self._hand_potential(hand, board, shit)
 
         ehs = hand_strength * (1 - npot) + (1 - hand_strength) * ppot
-
-        print(hand_strength, ehs)
 
         return hand_strength * (1 - npot) + (1 - hand_strength) * ppot
 
@@ -29,7 +27,7 @@ class Evaluator():
         ahead = tied = behind = 0.0
         our_rank = self._rank(hand, board)
 
-        possible_opp_hands = self._card_combinations(excluded_cards=board+hand, combination_len=2)
+        possible_opp_hands = self._card_combinations(excluded_cards=board+hand, tuple_size=2)
 
         for opp_hand in possible_opp_hands:
             opp_rank = self._rank(list(opp_hand), board)
@@ -40,12 +38,10 @@ class Evaluator():
                 tied += 1.0
             else:
                 behind += 1.0
-
-        print(ahead, tied, behind)
         
         return (ahead + tied / 2.0) / (ahead + tied + behind)
 
-    def _hand_potential(self, hand: List[int], board: List[int]) -> (float, float):
+    def _hand_potential(self, hand: List[int], board: List[int], shit) -> (float, float):
         ahead = 0
         tied = 1
         behind = 2
@@ -55,15 +51,14 @@ class Evaluator():
 
         our_rank = self._rank(hand, board)
 
-        possible_opp_hands = self._card_combinations(excluded_cards=hand + board, combination_len=2)
+        possible_opp_hands = self._card_combinations(excluded_cards=hand + board, tuple_size=2)
 
-        cnt = 0
+        num_undrawn_community_cards = MAX_COMMUNITY_CARDS - len(board)
+        community_sample_ratios = [1, shit, 0.1]
+        community_sample_ratio = community_sample_ratios[num_undrawn_community_cards]
 
         for opp_hand in possible_opp_hands:
             opp_rank = self._rank(list(opp_hand), board)
-
-            cnt += 1
-            print(cnt)
 
             index = 0
             if our_rank < opp_rank:
@@ -72,13 +67,11 @@ class Evaluator():
                 index = tied
             else:
                 index = behind
-            
-            
 
-            num_undrawn_community_cards = MAX_COMMUNITY_CARDS - len(board)
             community_combinations = self._card_combinations(
                 excluded_cards=hand + board + list(opp_hand),
-                combination_len=num_undrawn_community_cards
+                tuple_size=num_undrawn_community_cards,
+                sample_size_ratio=community_sample_ratio,
             )
 
             for community_combination in community_combinations:
@@ -96,22 +89,21 @@ class Evaluator():
                 else:
                     hp[index][behind] += 1.0
 
-        print(hp, hp_totals)
-
         ppot = (hp[behind][ahead] + hp[behind][tied] / 2 + hp[tied][ahead] / 2) / (hp_totals[behind] + hp_totals[tied])
         npot = (hp[ahead][behind] + hp[tied][behind] / 2 + hp[ahead][tied] / 2) / (hp_totals[ahead] + hp_totals[tied])
 
         return ppot, npot
 
-    def _card_combinations(self, excluded_cards: List[int], combination_len: int) -> List[Tuple[int]]:
+    def _card_combinations(self, excluded_cards: List[int], tuple_size: int, sample_size_ratio: float = 1.0) -> List[Tuple[int]]:
         deck = treys.Deck()
         cards = deck.draw(MAX_CARDS)
         deck_as_set = set(cards)
 
         for card in excluded_cards:
             deck_as_set.remove(card)
-        
-        return itertools.combinations(deck_as_set, combination_len)
+
+        combos = list(itertools.combinations(deck_as_set, tuple_size))
+        return random.sample(combos, int(len(combos) * sample_size_ratio))
 
     def _rank(self, hand: List[int], board: List[int]) -> int:
         score = self.evaluator.evaluate(hand, board)
@@ -121,8 +113,9 @@ class Evaluator():
 if __name__ == '__main__':
     eval = Evaluator()
     
-    hand = [treys.Card.new('Qh'), treys.Card.new('Qd')]
-    board = [treys.Card.new('Ah'), treys.Card.new('Kd'), treys.Card.new('Jc'), treys.Card.new('Jh'), treys.Card.new('Jd')]
+    deck = treys.Deck()
+    hand = deck.draw(2)
+    board = deck.draw(4)
 
-    hand_strength = eval.effective_hand_strength(hand, board)
-    print(hand_strength)
+    hand_strength1 = eval.effective_hand_strength(hand, board, 0.1)
+    print(hand_strength1)
