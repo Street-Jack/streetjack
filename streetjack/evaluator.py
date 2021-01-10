@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+import math
 import random
 import itertools
 from typing import List, Set, Tuple
@@ -14,12 +15,14 @@ MAX_COMMUNITY_CARDS = 5
 class Evaluator():
     def __init__(self):
         self.evaluator = treys.Evaluator()
-    
-    def effective_hand_strength(self, hand: List[int], board: List[int], shit) -> float:
-        hand_strength = self._hand_strenght(hand, board)
-        ppot, npot = self._hand_potential(hand, board, shit)
 
-        ehs = hand_strength * (1 - npot) + (1 - hand_strength) * ppot
+    def effective_rank(self, hand: List[int], board: List[int], bucket_count: int) -> int:
+        ehs = self.effective_hand_strength(hand, board)
+        return math.floor(ehs * bucket_count)
+
+    def effective_hand_strength(self, hand: List[int], board: List[int]) -> float:
+        hand_strength = self._hand_strenght(hand, board)
+        ppot, npot = self._hand_potential(hand, board)
 
         return hand_strength * (1 - npot) + (1 - hand_strength) * ppot
 
@@ -41,7 +44,7 @@ class Evaluator():
         
         return (ahead + tied / 2.0) / (ahead + tied + behind)
 
-    def _hand_potential(self, hand: List[int], board: List[int], shit) -> (float, float):
+    def _hand_potential(self, hand: List[int], board: List[int]) -> (float, float):
         ahead = 0
         tied = 1
         behind = 2
@@ -54,7 +57,7 @@ class Evaluator():
         possible_opp_hands = self._card_combinations(excluded_cards=hand + board, tuple_size=2)
 
         num_undrawn_community_cards = MAX_COMMUNITY_CARDS - len(board)
-        community_sample_ratios = [1, shit, 0.1]
+        community_sample_ratios = [1, 0.2, 0.1]
         community_sample_ratio = community_sample_ratios[num_undrawn_community_cards]
 
         for opp_hand in possible_opp_hands:
@@ -117,5 +120,9 @@ if __name__ == '__main__':
     hand = deck.draw(2)
     board = deck.draw(4)
 
-    hand_strength1 = eval.effective_hand_strength(hand, board, 0.1)
-    print(hand_strength1)
+    # hand = [treys.Card.new('Kh'), treys.Card.new('Ah')]
+    # board = [treys.Card.new('Qh'), treys.Card.new('Jh'), treys.Card.new('Th')]
+
+    # hand_strength1 = eval.effective_hand_strength(hand, board)
+    er = eval.effective_rank(hand, board)
+    print(er)
