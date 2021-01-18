@@ -1,12 +1,11 @@
 #!/usr/bin/env python3
 
+import itertools
 import math
 import random
-import itertools
-from typing import List, Set, Tuple
+from typing import List, Tuple
 
 import treys
-
 
 MAX_CARDS = 52
 MAX_COMMUNITY_CARDS = 5
@@ -124,5 +123,5 @@ if __name__ == '__main__':
     # board = [treys.Card.new('Qh'), treys.Card.new('Jh'), treys.Card.new('Th')]
 
     # hand_strength1 = eval.effective_hand_strength(hand, board)
-    er = eval.effective_rank(hand, board)
+    er = eval.effective_rank(hand, board,3)
     print(er)
