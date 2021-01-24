@@ -56,7 +56,7 @@ class Evaluator():
         possible_opp_hands = self._card_combinations(excluded_cards=hand + board, tuple_size=2)
 
         num_undrawn_community_cards = MAX_COMMUNITY_CARDS - len(board)
-        community_sample_ratios = [1, 0.2, 0.1]
+        community_sample_ratios = [1, 0.1, 0.1]
         community_sample_ratio = community_sample_ratios[num_undrawn_community_cards]
 
         for opp_hand in possible_opp_hands:
@@ -123,5 +123,5 @@ if __name__ == '__main__':
     # board = [treys.Card.new('Qh'), treys.Card.new('Jh'), treys.Card.new('Th')]
 
     # hand_strength1 = eval.effective_hand_strength(hand, board)
-    er = eval.effective_rank(hand, board,3)
+    er = eval.effective_rank(hand, board, 3)
     print(er)
