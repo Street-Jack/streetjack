@@ -14,6 +14,15 @@ MAX_COMMUNITY_CARDS = 5
 class Evaluator():
     def __init__(self):
         self.evaluator = treys.Evaluator()
+    
+    def effective_hand_rank(self, hand: List[int], bucket_count: int) -> int:
+        combos = self._card_combinations(hand, MAX_COMMUNITY_CARDS, 0.000005)
+        rank_sum = 0
+
+        for combo in combos:
+            rank_sum += self.effective_rank(hand, list(combo), bucket_count)
+        
+        return math.floor(rank_sum / len(combos))
 
     def effective_rank(self, hand: List[int], board: List[int], bucket_count: int) -> int:
         ehs = self.effective_hand_strength(hand, board)
@@ -43,7 +52,7 @@ class Evaluator():
         
         return (ahead + tied / 2.0) / (ahead + tied + behind)
 
-    def _hand_potential(self, hand: List[int], board: List[int]) -> (float, float):
+    def _hand_potential(self, hand: List[int], board: List[int]) -> Tuple[float, float]:
         ahead = 0
         tied = 1
         behind = 2
@@ -56,7 +65,7 @@ class Evaluator():
         possible_opp_hands = self._card_combinations(excluded_cards=hand + board, tuple_size=2)
 
         num_undrawn_community_cards = MAX_COMMUNITY_CARDS - len(board)
-        community_sample_ratios = [1, 0.1, 0.1]
+        community_sample_ratios = [1, 0.1, 0.02]
         community_sample_ratio = community_sample_ratios[num_undrawn_community_cards]
 
         for opp_hand in possible_opp_hands:
@@ -91,8 +100,8 @@ class Evaluator():
                 else:
                     hp[index][behind] += 1.0
 
-        ppot = (hp[behind][ahead] + hp[behind][tied] / 2 + hp[tied][ahead] / 2) / (hp_totals[behind] + hp_totals[tied])
-        npot = (hp[ahead][behind] + hp[tied][behind] / 2 + hp[ahead][tied] / 2) / (hp_totals[ahead] + hp_totals[tied])
+        ppot = (hp[behind][ahead] + hp[behind][tied] / 2 + hp[tied][ahead] / 2 + 0.001) / (hp_totals[behind] + hp_totals[tied] + 0.001)
+        npot = (hp[ahead][behind] + hp[tied][behind] / 2 + hp[ahead][tied] / 2 + 0.001) / (hp_totals[ahead] + hp_totals[tied] + 0.001)
 
         return ppot, npot
 
@@ -123,5 +132,7 @@ if __name__ == '__main__':
     # board = [treys.Card.new('Qh'), treys.Card.new('Jh'), treys.Card.new('Th')]
 
     # hand_strength1 = eval.effective_hand_strength(hand, board)
-    er = eval.effective_rank(hand, board, 3)
+    er = eval.effective_rank(hand, board, 10)
     print(er)
+
+    print(eval.effective_hand_rank(hand, 10))
