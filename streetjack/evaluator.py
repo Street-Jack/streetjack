@@ -10,29 +10,88 @@ import treys
 MAX_CARDS = 52
 MAX_COMMUNITY_CARDS = 5
 
+MAX_CHEN_FORMULA_VALUE = 20
+MIN_CHEN_FORMULA_VALUE = -1
+
+CHEN_ACE_RANK = 10
+CHEN_KING_RANK = 8
+CHEN_QUEEN_RANK = 7
+CHEN_JACK_RANK = 6
+
+RANK_OFFSET = 2
+
 
 class Evaluator():
     def __init__(self):
         self.evaluator = treys.Evaluator()
     
-    def effective_hand_rank(self, hand: List[int], bucket_count: int) -> int:
-        combos = self._card_combinations(hand, MAX_COMMUNITY_CARDS, 0.000005)
-        rank_sum = 0
-
-        for combo in combos:
-            rank_sum += self.effective_rank(hand, list(combo), bucket_count)
-        
-        return math.floor(rank_sum / len(combos))
-
     def effective_rank(self, hand: List[int], board: List[int], bucket_count: int) -> int:
-        ehs = self.effective_hand_strength(hand, board)
-        return math.floor(ehs * bucket_count)
+        if board == []:
+            return self._effective_hand_rank(hand, bucket_count)
+        
+        return self._effective_rank_with_board(hand, board, bucket_count)
 
     def effective_hand_strength(self, hand: List[int], board: List[int]) -> float:
         hand_strength = self._hand_strenght(hand, board)
         ppot, npot = self._hand_potential(hand, board)
 
         return hand_strength * (1 - npot) + (1 - hand_strength) * ppot
+    
+    def _effective_hand_rank(self, hand: List[int], bucket_count: int) -> int:
+        # Using Chen formula
+        fst_card_score = self._chen_score(hand[0])
+        snd_card_score = self._chen_score(hand[1])
+
+        score = max(fst_card_score, snd_card_score)
+
+        if treys.Card.get_suit_int(hand[0]) == treys.Card.get_suit_int(hand[1]):
+            score += 2
+        
+        fst_card_rank = treys.Card.get_rank_int(hand[0])
+        snd_card_rank = treys.Card.get_rank_int(hand[1])
+
+        ranks_diff = abs(fst_card_rank - snd_card_rank)
+
+        if ranks_diff == 0:
+            score *= 2
+        elif ranks_diff == 1:
+            score += 1
+        elif ranks_diff == 2:
+            score -= 1
+        elif ranks_diff == 3:
+            score -= 2
+        elif ranks_diff == 4:
+            score -= 4
+        else:
+            score -= 5
+        
+        score = math.ceil(score)
+        norm_score = (score - MIN_CHEN_FORMULA_VALUE) / MAX_CHEN_FORMULA_VALUE
+
+        return math.floor(norm_score * (bucket_count - 1))
+
+    def _chen_score(self, card: int) -> int:
+        ace_rank = treys.Card.get_rank_int(treys.Card.new('Ac'))
+        king_rank = treys.Card.get_rank_int(treys.Card.new('Kc'))
+        queen_rank = treys.Card.get_rank_int(treys.Card.new('Qc'))
+        jack_rank = treys.Card.get_rank_int(treys.Card.new('Jc'))
+
+        card_rank = treys.Card.get_rank_int(card)
+
+        if card_rank == ace_rank:
+            return CHEN_ACE_RANK
+        elif card_rank == king_rank:
+            return CHEN_KING_RANK
+        elif card_rank == queen_rank:
+            return CHEN_QUEEN_RANK
+        elif card_rank == jack_rank:
+            return CHEN_JACK_RANK
+        else:
+            return (RANK_OFFSET + card_rank)/2
+
+    def _effective_rank_with_board(self, hand: List[int], board: List[int], bucket_count: int) -> int:
+        ehs = self.effective_hand_strength(hand, board)
+        return math.floor(ehs * bucket_count)
 
     def _hand_strenght(self, hand: List[int], board: List[int]) -> float:
         ahead = tied = behind = 0.0
@@ -49,7 +108,7 @@ class Evaluator():
                 tied += 1.0
             else:
                 behind += 1.0
-        
+
         return (ahead + tied / 2.0) / (ahead + tied + behind)
 
     def _hand_potential(self, hand: List[int], board: List[int]) -> Tuple[float, float]:
@@ -117,8 +176,7 @@ class Evaluator():
         return random.sample(combos, int(len(combos) * sample_size_ratio))
 
     def _rank(self, hand: List[int], board: List[int]) -> int:
-        score = self.evaluator.evaluate(hand, board)
-        return self.evaluator.get_rank_class(score)
+        return self.evaluator.evaluate(hand, board)
 
 
 if __name__ == '__main__':
