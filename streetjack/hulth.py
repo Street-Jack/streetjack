@@ -19,7 +19,6 @@ CHANCE_NODE_ENCODING = '.'
 SMALL_BLIND = 0
 BIG_BLIND = 1
 
-
 class GameStateError(Exception):
     pass
 
@@ -61,10 +60,7 @@ class CardBundle:
             bucket_indices = dict()
 
             for k, v in BOARD_CARDS.items():
-                if v == 0:
-                    bucket_indices[k] = evaluator.effective_hand_rank(self._hands[i], MAX_BUCKETS)
-                else:
-                    bucket_indices[k] = evaluator.effective_rank(self._hands[i], self._board[:v], MAX_BUCKETS)
+                bucket_indices[k] = evaluator.effective_rank(self._hands[i], self._board[:v], MAX_BUCKETS)
             
             self._hand_bucket_indices.append(bucket_indices)
         
@@ -83,10 +79,10 @@ class CardBundle:
         return self._hand_bucket_indices[player_index][stage]
     
     def winner_index(self) -> int:
-        if self._hand_strengths[0] > self._hand_strengths[1]:
-            return 0
+        if self._hand_strengths[0] < self._hand_strengths[1]:
+            return SMALL_BLIND
 
-        return 1
+        return BIG_BLIND
 
 
 class InfoSet(ABC):
@@ -98,6 +94,9 @@ class InfoSet(ABC):
         self._stage = self._parse_stage()
         self._stage_history = self._parse_stage_history()
         self._player = self._parse_player_index()
+
+    def history(self) -> List[Action]:
+        return self._history
     
     def play(self, action: Action) -> 'InfoSet':
         raise NotImplementedError("play method not implemented")
@@ -112,8 +111,9 @@ class InfoSet(ABC):
         raise NotImplementedError("is_terminal method not implemented")
 
     def is_chance(self) -> bool:
-        return len(self._history >= 1) and self._history[-1] == Action.CHANCE
-    
+        # :cc
+        return len(self._history) > 0 and self._history[-1] == Action.CHANCE
+
     def _parse_stage(self) -> Stage:
         chance_nodes = list(filter((lambda action: action == Action.CHANCE), self._history))
 
@@ -188,7 +188,7 @@ class ChanceInfoSet(InfoSet):
 
     def play(self, action: Action) -> InfoSet:
         if self._children == []:
-            self._children = self._generate_children(bundle)
+            self._children = self._generate_children(self._bundle)
 
         if not action in self._children:
             raise GameStateError("action not possible")
@@ -202,6 +202,9 @@ class ChanceInfoSet(InfoSet):
             actions.append(Action.RAISE)
 
         actions.append(Action.CALL)
+
+        if self._stage == Stage.PREFLOP: 
+            actions.append(Action.FOLD)
 
         return actions
     
@@ -238,7 +241,7 @@ class MoveInfoSet(InfoSet):
     
     def play(self, action: Action) -> InfoSet:
         if self._children == []:
-            self._children = self._generate_children(bundle)
+            self._children = self._generate_children(self._bundle)
 
         if not action in self._children:
             raise GameStateError("action not possible")
@@ -260,6 +263,9 @@ class MoveInfoSet(InfoSet):
         return actions_prefix + '.{}'.format(self._bucket_index)
     
     def actions(self) -> List[Action]:
+        if self.is_terminal():
+            return []
+
         if self._players_called():
             return [Action.CHANCE]
 
