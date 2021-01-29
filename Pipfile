@@ -5,6 +5,9 @@ name = "pypi"
 
 [packages]
 treys = "*"
+nose = "*"
+nose-timer = "*"
+nose-cov = "*"
 
 [dev-packages]
 

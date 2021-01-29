@@ -21,14 +21,14 @@ CHEN_JACK_RANK = 6
 RANK_OFFSET = 2
 
 
-class Evaluator():
+class Evaluator:
     def __init__(self):
         self.evaluator = treys.Evaluator()
-    
+
     def effective_rank(self, hand: List[int], board: List[int], bucket_count: int) -> int:
         if board == []:
             return self._effective_hand_rank(hand, bucket_count)
-        
+
         return self._effective_rank_with_board(hand, board, bucket_count)
 
     def effective_hand_strength(self, hand: List[int], board: List[int]) -> float:
@@ -36,7 +36,7 @@ class Evaluator():
         ppot, npot = self._hand_potential(hand, board)
 
         return hand_strength * (1 - npot) + (1 - hand_strength) * ppot
-    
+
     def _effective_hand_rank(self, hand: List[int], bucket_count: int) -> int:
         # Using Chen formula
         fst_card_score = self._chen_score(hand[0])
@@ -46,7 +46,7 @@ class Evaluator():
 
         if treys.Card.get_suit_int(hand[0]) == treys.Card.get_suit_int(hand[1]):
             score += 2
-        
+
         fst_card_rank = treys.Card.get_rank_int(hand[0])
         snd_card_rank = treys.Card.get_rank_int(hand[1])
 
@@ -64,17 +64,17 @@ class Evaluator():
             score -= 4
         else:
             score -= 5
-        
+
         score = math.ceil(score)
         norm_score = (score - MIN_CHEN_FORMULA_VALUE) / MAX_CHEN_FORMULA_VALUE
 
         return math.floor(norm_score * (bucket_count - 1))
 
     def _chen_score(self, card: int) -> int:
-        ace_rank = treys.Card.get_rank_int(treys.Card.new('Ac'))
-        king_rank = treys.Card.get_rank_int(treys.Card.new('Kc'))
-        queen_rank = treys.Card.get_rank_int(treys.Card.new('Qc'))
-        jack_rank = treys.Card.get_rank_int(treys.Card.new('Jc'))
+        ace_rank = treys.Card.get_rank_int(treys.Card.new("Ac"))
+        king_rank = treys.Card.get_rank_int(treys.Card.new("Kc"))
+        queen_rank = treys.Card.get_rank_int(treys.Card.new("Qc"))
+        jack_rank = treys.Card.get_rank_int(treys.Card.new("Jc"))
 
         card_rank = treys.Card.get_rank_int(card)
 
@@ -87,7 +87,7 @@ class Evaluator():
         elif card_rank == jack_rank:
             return CHEN_JACK_RANK
         else:
-            return (RANK_OFFSET + card_rank)/2
+            return (RANK_OFFSET + card_rank) / 2
 
     def _effective_rank_with_board(self, hand: List[int], board: List[int], bucket_count: int) -> int:
         ehs = self.effective_hand_strength(hand, board)
@@ -97,7 +97,7 @@ class Evaluator():
         ahead = tied = behind = 0.0
         our_rank = self._rank(hand, board)
 
-        possible_opp_hands = self._card_combinations(excluded_cards=board+hand, tuple_size=2)
+        possible_opp_hands = self._card_combinations(excluded_cards=board + hand, tuple_size=2)
 
         for opp_hand in possible_opp_hands:
             opp_rank = self._rank(list(opp_hand), board)
@@ -159,12 +159,18 @@ class Evaluator():
                 else:
                     hp[index][behind] += 1.0
 
-        ppot = (hp[behind][ahead] + hp[behind][tied] / 2 + hp[tied][ahead] / 2 + 0.001) / (hp_totals[behind] + hp_totals[tied] + 0.001)
-        npot = (hp[ahead][behind] + hp[tied][behind] / 2 + hp[ahead][tied] / 2 + 0.001) / (hp_totals[ahead] + hp_totals[tied] + 0.001)
+        ppot = (hp[behind][ahead] + hp[behind][tied] / 2 + hp[tied][ahead] / 2 + 0.001) / (
+            hp_totals[behind] + hp_totals[tied] + 0.001
+        )
+        npot = (hp[ahead][behind] + hp[tied][behind] / 2 + hp[ahead][tied] / 2 + 0.001) / (
+            hp_totals[ahead] + hp_totals[tied] + 0.001
+        )
 
         return ppot, npot
 
-    def _card_combinations(self, excluded_cards: List[int], tuple_size: int, sample_size_ratio: float = 1.0) -> List[Tuple[int]]:
+    def _card_combinations(
+        self, excluded_cards: List[int], tuple_size: int, sample_size_ratio: float = 1.0
+    ) -> List[Tuple[int]]:
         deck = treys.Deck()
         cards = deck.draw(MAX_CARDS)
         deck_as_set = set(cards)
@@ -179,9 +185,9 @@ class Evaluator():
         return self.evaluator.evaluate(hand, board)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     eval = Evaluator()
-    
+
     deck = treys.Deck()
     hand = deck.draw(2)
     board = deck.draw(4)

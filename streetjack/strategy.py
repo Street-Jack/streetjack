@@ -13,9 +13,9 @@ START_MONEY = 80
 PLAYER_COUNT = 2
 DUMMY_RANK = -1
 
-SEPARATOR = ':'
-OPENER = '('
-CLOSER = ')'
+SEPARATOR = ":"
+OPENER = "("
+CLOSER = ")"
 
 
 class Action(Enum):
@@ -31,11 +31,11 @@ class Stage(Enum):
     RIVER = 3
     SHOWDOWN = 4
 
-    def succ(self) -> 'Stage':
+    def succ(self) -> "Stage":
         val = self.value + 1
 
         if val > Stage.SHOWDOWN.value:
-            raise ValueError('Enumeration ended')
+            raise ValueError("Enumeration ended")
 
         return Stage(val)
 
@@ -49,8 +49,13 @@ def get_action(curr_strategy) -> int:
     return choice(curr_strategy)
 
 
-class InfoSet():
-    def __init__(self, rank: int, cumulative_stategy: List[float] = None, cumulative_regrets: List[int] = None):
+class InfoSet:
+    def __init__(
+        self,
+        rank: int,
+        cumulative_stategy: List[float] = None,
+        cumulative_regrets: List[int] = None,
+    ):
         self.rank = rank
         self.cumulative_stategy = cumulative_stategy
         if not self.cumulative_stategy:
@@ -63,9 +68,9 @@ class InfoSet():
         self.children = []
 
     def __repr__(self) -> str:
-        return 'Rank={}:CumStrat={}:CumRegr={}'.format(self.rank, self.cumulative_stategy, self.cumulative_regrets)
+        return "Rank={}:CumStrat={}:CumRegr={}".format(self.rank, self.cumulative_stategy, self.cumulative_regrets)
 
-    def append_child(self, child: 'InfoSet') -> None:
+    def append_child(self, child: "InfoSet") -> None:
         self.children.append(child)
 
     def calculate_strategy(self) -> List[float]:
@@ -111,14 +116,26 @@ def build_subgame_strategies() -> InfoSet:
 
     small_blind.append_child(big_blind)
 
-    build_child_strategies(big_blind, big_blind_money, small_blind_money, Stage.PREFLOP, Stage.SHOWDOWN,
-                           stage_history=[])
+    build_child_strategies(
+        big_blind,
+        big_blind_money,
+        small_blind_money,
+        Stage.PREFLOP,
+        Stage.SHOWDOWN,
+        stage_history=[],
+    )
 
     return small_blind
 
 
-def build_child_strategies(info_set: InfoSet, our_money: int, opp_money: int, stage: Stage, final_stage: Stage,
-                           stage_history: List[Action]) -> None:
+def build_child_strategies(
+    info_set: InfoSet,
+    our_money: int,
+    opp_money: int,
+    stage: Stage,
+    final_stage: Stage,
+    stage_history: List[Action],
+) -> None:
     if _is_terminal(stage, final_stage, stage_history):
         return
 
@@ -225,17 +242,17 @@ def unmarshal(model: str) -> InfoSet:
             balance -= 1
 
         if balance < 0:
-            raise Exception('Corrupted strategy data file: Expected ' + OPENER)
+            raise Exception("Corrupted strategy data file: Expected " + OPENER)
 
         if balance == 0:
-            child_model = model[start:i + 1]
+            child_model = model[start : i + 1]
             child = unmarshal(child_model)
 
             node.append_child(child)
             start = i + 1
 
     if balance != 0:
-        raise Exception('Corrupted strategy data file: Expected ' + CLOSER)
+        raise Exception("Corrupted strategy data file: Expected " + CLOSER)
 
     return node
 
@@ -276,12 +293,12 @@ def _could_raise(money: int, stage_history: List[Action]) -> bool:
     return True
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     strategy = build_subgame_strategies()
 
-    with open('strategy', 'w') as f:
+    with open("strategy", "w") as f:
         f.write(marshal(strategy))
 
-    with open('strategy', 'r') as f:
+    with open("strategy", "r") as f:
         content = f.read()
         node = unmarshal(content)
