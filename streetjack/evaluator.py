@@ -70,7 +70,8 @@ class Evaluator:
 
         return math.floor(norm_score * (bucket_count - 1))
 
-    def _chen_score(self, card: int) -> int:
+    @staticmethod
+    def _chen_score(card: int) -> int:
         ace_rank = treys.Card.get_rank_int(treys.Card.new("Ac"))
         king_rank = treys.Card.get_rank_int(treys.Card.new("Kc"))
         queen_rank = treys.Card.get_rank_int(treys.Card.new("Qc"))
@@ -80,14 +81,17 @@ class Evaluator:
 
         if card_rank == ace_rank:
             return CHEN_ACE_RANK
-        elif card_rank == king_rank:
+
+        if card_rank == king_rank:
             return CHEN_KING_RANK
-        elif card_rank == queen_rank:
+
+        if card_rank == queen_rank:
             return CHEN_QUEEN_RANK
-        elif card_rank == jack_rank:
+
+        if card_rank == jack_rank:
             return CHEN_JACK_RANK
-        else:
-            return (RANK_OFFSET + card_rank) / 2
+
+        return (RANK_OFFSET + card_rank) / 2
 
     def _effective_rank_with_board(self, hand: List[int], board: List[int], bucket_count: int) -> int:
         ehs = self.effective_hand_strength(hand, board)
@@ -116,7 +120,7 @@ class Evaluator:
         tied = 1
         behind = 2
 
-        hp = [[0.0, 0.0, 0.0], [0.0, 0.0, 0.0], [0.0, 0.0, 0.0]]
+        hand_pot = [[0.0, 0.0, 0.0], [0.0, 0.0, 0.0], [0.0, 0.0, 0.0]]
         hp_totals = [0.0, 0.0, 0.0]
 
         our_rank = self._rank(hand, board)
@@ -153,23 +157,27 @@ class Evaluator:
                 opp_best = self._rank(list(opp_hand), new_board)
 
                 if our_best < opp_best:
-                    hp[index][ahead] += 1.0
+                    hand_pot[index][ahead] += 1.0
                 elif our_best == opp_best:
-                    hp[index][tied] += 1.0
+                    hand_pot[index][tied] += 1.0
                 else:
-                    hp[index][behind] += 1.0
+                    hand_pot[index][behind] += 1.0
 
-        ppot = (hp[behind][ahead] + hp[behind][tied] / 2 + hp[tied][ahead] / 2 + 0.001) / (
-            hp_totals[behind] + hp_totals[tied] + 0.001
-        )
-        npot = (hp[ahead][behind] + hp[tied][behind] / 2 + hp[ahead][tied] / 2 + 0.001) / (
-            hp_totals[ahead] + hp_totals[tied] + 0.001
-        )
+        ppot_num = hand_pot[behind][ahead] + hand_pot[behind][tied] / 2 + hand_pot[tied][ahead] / 2 + 0.001
+        ppot_denom = hp_totals[behind] + hp_totals[tied] + 0.001
+
+        ppot = ppot_num / ppot_denom
+
+        npot_num = hand_pot[ahead][behind] + hand_pot[tied][behind] / 2 + hand_pot[ahead][tied] / 2 + 0.001
+        npot_denom = hp_totals[ahead] + hp_totals[tied] + 0.001
+
+        npot = npot_num / npot_denom
 
         return ppot, npot
 
+    @staticmethod
     def _card_combinations(
-        self, excluded_cards: List[int], tuple_size: int, sample_size_ratio: float = 1.0
+        excluded_cards: List[int], tuple_size: int, sample_size_ratio: float = 1.0
     ) -> List[Tuple[int]]:
         deck = treys.Deck()
         cards = deck.draw(MAX_CARDS)
@@ -183,20 +191,3 @@ class Evaluator:
 
     def _rank(self, hand: List[int], board: List[int]) -> int:
         return self.evaluator.evaluate(hand, board)
-
-
-if __name__ == "__main__":
-    eval = Evaluator()
-
-    deck = treys.Deck()
-    hand = deck.draw(2)
-    board = deck.draw(4)
-
-    # hand = [treys.Card.new('Kh'), treys.Card.new('Ah')]
-    # board = [treys.Card.new('Qh'), treys.Card.new('Jh'), treys.Card.new('Th')]
-
-    # hand_strength1 = eval.effective_hand_strength(hand, board)
-    er = eval.effective_rank(hand, board, 10)
-    print(er)
-
-    print(eval.effective_hand_rank(hand, 10))

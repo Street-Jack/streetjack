@@ -88,7 +88,6 @@ class TestEvaluator(unittest.TestCase):
 
     def test_different_strength_combos_in_single_bucket(self):
         royal_flush_hand = [treys.Card.new("Kh"), treys.Card.new("Ah")]
-        # TODO: Add troubleshooting guide for when using two same cards in both opponent hands --> like me having a Kh and opp having a Kh
         straight_flush_hand = [treys.Card.new("9h"), treys.Card.new("8h")]
 
         board = [

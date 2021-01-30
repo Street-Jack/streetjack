@@ -4,26 +4,19 @@ import unittest
 from unittest.mock import MagicMock
 from typing import List
 
-from treys import Card
-
 from streetjack.hulth import CardBundle, InfoSet, Stage, ChanceInfoSet, MoveInfoSet, Action, InfoSetError
+import tests.util.common as common
 
 
 class TestCardBundle(unittest.TestCase):
-    @classmethod
-    def setUpClass(cls):
-        cls._royal_flush_hand = [Card.new("Ac"), Card.new("Kc")]
-        cls._straight_flush_hand = [Card.new("9c"), Card.new("8c")]
-        cls._board = [Card.new("Qc"), Card.new("Jc"), Card.new("Tc"), Card.new("2c"), Card.new("7c")]
-
     def test_cards(self):
         bundle = self._bundle()
 
         plr_0_hand = bundle.player_hand(player_index=0)
         plr_1_hand = bundle.player_hand(player_index=1)
 
-        self.assertEqual(plr_0_hand, self._royal_flush_hand)
-        self.assertEqual(plr_1_hand, self._straight_flush_hand)
+        self.assertEqual(plr_0_hand, common.ROYAL_FLUSH_HAND)
+        self.assertEqual(plr_1_hand, common.STRAIGHT_FLUSH_HAND)
 
     def test_bucket_index(self):
         bundle = self._bundle()
@@ -55,20 +48,13 @@ class TestCardBundle(unittest.TestCase):
         if not hand_strengths:
             hand_strengths = [1, 3]
 
-        deck = self._mock_deck()
+        deck = common.mock_deck()
         evaluator = self._mock_evaluator(hand_strengths)
 
         return CardBundle(deck, evaluator)
 
-    def _mock_deck(self) -> MagicMock:
-        deck = MagicMock()
-
-        deck.draw = MagicMock()
-        deck.draw.side_effect = [self._royal_flush_hand, self._straight_flush_hand, self._board]
-
-        return deck
-
-    def _mock_evaluator(self, hand_strengths: List[int]) -> MagicMock:
+    @staticmethod
+    def _mock_evaluator(hand_strengths: List[int]) -> MagicMock:
         mock_evaluator = MagicMock()
 
         mock_evaluator.effective_rank = MagicMock(return_value=9)
@@ -157,11 +143,6 @@ class TestChanceInfoSet(unittest.TestCase):
         with self.assertRaises(InfoSetError):
             ChanceInfoSet(history=history, bundle=self._bundle)
 
-    # :r -> c,f
-    # :rc -> c,f
-    #  -> r,c,f
-    # :c -> r,c,f
-
 
 class TestMoveInfoSet(unittest.TestCase):
     def setUp(self) -> None:
@@ -200,11 +181,6 @@ class TestMoveInfoSet(unittest.TestCase):
         )
 
     def test_encoding(self):
-        # TODO: think about this:
-        # imperfect recall (or so we guess...)
-        #:rcc.5:c.6 vs :rcc:c.6
-        #:rcc.1:c.6 vs :rcc:c.6
-
         history = [Action.CHANCE, Action.RAISE, Action.CALL, Action.CALL, Action.CHANCE, Action.CALL]
         bucket_index = 1
         self._bundle.bucket_index = MagicMock(return_value=bucket_index)

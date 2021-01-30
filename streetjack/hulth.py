@@ -2,7 +2,7 @@
 
 from abc import ABC
 from enum import Enum
-from typing import List, Dict, Tuple
+from typing import List, Dict
 
 from treys import Deck
 
@@ -39,7 +39,7 @@ class Stage(Enum):
 
 
 BOARD_CARDS = {
-    Stage.PREFLOP: 0,  # TODO: Improve.
+    Stage.PREFLOP: 0,
     Stage.FLOP: 3,
     Stage.TURN: 4,
     Stage.RIVER: 5,
@@ -58,8 +58,8 @@ class CardBundle:
         for i in range(len(self._hands)):
             bucket_indices = dict()
 
-            for k, v in BOARD_CARDS.items():
-                bucket_indices[k] = evaluator.effective_rank(self._hands[i], self._board[:v], MAX_BUCKETS)
+            for key, num_cards in BOARD_CARDS.items():
+                bucket_indices[key] = evaluator.effective_rank(self._hands[i], self._board[:num_cards], MAX_BUCKETS)
 
             self._hand_bucket_indices.append(bucket_indices)
 
@@ -167,7 +167,7 @@ class InfoSet(ABC):
                 curr_player = SMALL_BLIND
                 continue
 
-            opponent = self._opponent(curr_player)
+            opponent = _opponent(curr_player)
 
             if self._history[i] == Action.RAISE:
                 player_bets[curr_player] = player_bets[opponent] + RAISE_AMOUNT
@@ -177,9 +177,6 @@ class InfoSet(ABC):
             curr_player = opponent
 
         return player_bets[player]
-
-    def _opponent(self, player: int) -> int:
-        return 1 - player
 
 
 class ChanceInfoSet(InfoSet):
@@ -212,10 +209,10 @@ class ChanceInfoSet(InfoSet):
 
         return actions
 
-    def encoding(_) -> str:
+    def encoding(self) -> str:
         return CHANCE_NODE_ENCODING
 
-    def is_terminal(_) -> bool:
+    def is_terminal(self) -> bool:
         return False
 
     def utility(self, player: int) -> int:
@@ -223,7 +220,7 @@ class ChanceInfoSet(InfoSet):
 
     def _validate_history(self):
         if len(self._history) > 0 and self._history[-1] != Action.CHANCE:
-            raise InfoSetError("invalid info set history: invalid action {}", self._history[-1].value)
+            raise InfoSetError("invalid chance info set history: invalid action {}".format(self._history[-1].value))
 
     def _generate_children(self, bundle: CardBundle) -> List[InfoSet]:
         actions = self.actions()
@@ -301,13 +298,13 @@ class MoveInfoSet(InfoSet):
         if self._player != player:
             sign = -sign
 
-        opponent = self._opponent(self._player)
+        opponent = _opponent(self._player)
 
         if self._history[-1] == Action.FOLD:
             return sign * self._player_bet(opponent)
 
         winner = self._bundle.winner_index()
-        loser = self._opponent(winner)
+        loser = _opponent(winner)
 
         if player == loser:
             return -self._player_bet(loser)
@@ -316,7 +313,7 @@ class MoveInfoSet(InfoSet):
 
     def _validate_history(self):
         if len(self._history) > 0 and self._history[-1] == Action.CHANCE:
-            raise InfoSetError("invalid info set history: invalid action {}", self._history[-1].value)
+            raise InfoSetError("invalid move info set history: invalid action {}".format(self._history[-1].value))
 
     def _generate_children(self, bundle: CardBundle) -> Dict:
         actions = self.actions()
@@ -348,22 +345,5 @@ def create_game_root(bundle: CardBundle):
     return ChanceInfoSet(history=[Action.CHANCE], bundle=bundle)
 
 
-# TODO:
-# - evaluation
-# - improve speed of effective hand rank
-# - look at some other ways for the preflop
-# - unit tests
-# - some refactoring
-
-if __name__ == "__main__":
-    eval = Evaluator()
-    deck = Deck()
-
-    bundle = CardBundle(deck, eval)
-
-    #:rcc:r
-    history = [Action.CHANCE, Action.RAISE]
-
-    s = MoveInfoSet(history, bundle)
-
-    print(s._player_bet())
+def _opponent(player: int) -> int:
+    return 1 - player
