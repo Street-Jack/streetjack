@@ -22,12 +22,12 @@ class TestMoveInfoSet(unittest.TestCase):
 
     def test_single_stage(self):
         base_encoding = ":cc:cc:cc:"
-        base_history = [Action.CHANCE, Action.CALL, Action.CALL] * 3 + [Action.CHANCE]
+        base_history = [Action.CHANCE, Action.CALL, Action.CALL] * 3
 
         info_set = ChanceInfoSet(history=base_history, bundle=TestMoveInfoSet._bundle)
         self._generate_subgame_tree(info_set)
 
-        info_set_postfixes = ["r", "rc", "rcc", "rf", "c", "cr", "crf", "crc", "crcc", "cc"]
+        info_set_postfixes = ["r", "rc", "rf", "c", "cr", "crf", "crc"]
 
         for postfix in info_set_postfixes:
             encoding = base_encoding + postfix + ".{}".format(common.MAX_BUCKET_INDEX)

@@ -36,6 +36,7 @@ class Stage(Enum):
     FLOP = 1
     TURN = 2
     RIVER = 3
+    SHOWDOWN = 4
 
 
 BOARD_CARDS = {
@@ -43,6 +44,7 @@ BOARD_CARDS = {
     Stage.FLOP: 3,
     Stage.TURN: 4,
     Stage.RIVER: 5,
+    Stage.SHOWDOWN: 5,
 }
 
 
@@ -108,11 +110,10 @@ class InfoSet(ABC):
         raise NotImplementedError("is_terminal method not implemented")
 
     def is_chance(self) -> bool:
-        # :cc
-        return len(self._history) > 0 and self._history[-1] == Action.CHANCE
+        raise NotImplementedError("is_chance method not implemented")
 
     def utility(self, player: int) -> int:
-        raise NotImplementedError("utility method not implemented")
+        raise NotImplementedError("play method not implemented")
 
     def _parse_stage_history(self) -> None:
         self._stage = self._parse_stage()
@@ -123,19 +124,24 @@ class InfoSet(ABC):
             if self._history[i] == Action.CHANCE:
                 last_stage_index = i
 
-        self._stage_history = self._history[last_stage_index + 1 :]
+        self._stage_history = self._history[last_stage_index:]
 
     def _parse_stage(self) -> Stage:
-        chance_nodes = list(filter((lambda action: action == Action.CHANCE), self._history))
+        subgame_stage = 0
+        min_stage_len = 2
+
+        for i in range(min_stage_len, len(self._history)):
+            if _players_called(self._history[: i + 1]):
+                subgame_stage += 1
 
         for stage in Stage:
-            if len(chance_nodes) == stage.value + 1:
+            if subgame_stage == stage.value:
                 return stage
 
         raise InfoSetError("Invalid stage encountered")
 
     def _parse_player_index(self) -> int:
-        return len(self._stage_history) % 2
+        return (1 + len(self._stage_history)) % 2
 
     def _could_raise(self) -> bool:
         if self._available_money() < RAISE_AMOUNT:
@@ -154,11 +160,13 @@ class InfoSet(ABC):
         curr_player = SMALL_BLIND
 
         # base cases
+        # --> c [SMALL_BLIND_BET, BIG_BLIND_BET]
         #: --> 0 [SMALL_BLIND_BET, BIG_BLIND_BET]
         #:r --> 1 [BIG_BLIND_BET+RAISE_AMOUNT, BIG_BLIND_BET]
         #:rf --> 0 [BIG_BLIND_BET+RAISE_AMOUNT, BIG_BLIND_BET] => player 0 profit is BIG_BLIND_BET
 
         #:rc --> 0 [BIG_BLIND_BET+RAISE_AMOUNT, BIG_BLIND_BET+RAISE_AMOUNT]
+        #:rcc --> c [BIG_BLIND_BET+RAISE_AMOUNT, BIG_BLIND_BET+RAISE_AMOUNT]
         #:rcc: --> 0 [BIG_BLIND_BET+RAISE_AMOUNT, BIG_BLIND_BET+RAISE_AMOUNT]
         #:rcc:r -> 1 [BIG_BLIND_BET+2*RAISE_AMOUNT, BIG_BLIND_BET+RAISE_AMOUNT]
 
@@ -197,30 +205,41 @@ class ChanceInfoSet(InfoSet):
         return self._children[action]
 
     def actions(self) -> List[Action]:
-        actions = []
+        if self.is_terminal():
+            return []
 
-        if self._could_raise():
-            actions.append(Action.RAISE)
-
-        actions.append(Action.CALL)
-
-        if self._stage == Stage.PREFLOP:
-            actions.append(Action.FOLD)
-
-        return actions
+        return [Action.CHANCE]
 
     def encoding(self) -> str:
         return CHANCE_NODE_ENCODING
 
     def is_terminal(self) -> bool:
-        return False
+        return self._stage == Stage.SHOWDOWN
+
+    def is_chance(self) -> bool:
+        return True
 
     def utility(self, player: int) -> int:
-        raise InfoSetError("utility cannot be provided by chance info set")
+        if not self.is_terminal():
+            raise InfoSetError("utility cannot be provided by non terminal info set")
 
-    def _validate_history(self):
-        if len(self._history) > 0 and self._history[-1] != Action.CHANCE:
-            raise InfoSetError("invalid chance info set history: invalid action {}".format(self._history[-1].value))
+        winner = self._bundle.winner_index()
+        loser = _opponent(winner)
+
+        if player == loser:
+            return -self._player_bet(loser)
+
+        return self._player_bet(loser)
+
+    def _validate_history(self) -> None:
+        if len(self._history) == 0:
+            return
+
+        # min is :cc
+        if len(self._history) > 2 and self._history[-1] == Action.CALL and self._history[-2] == Action.CALL:
+            return
+
+        raise InfoSetError("invalid chance info set history: invalid action {}".format(self._history[-1].value))
 
     def _generate_children(self, bundle: CardBundle) -> List[InfoSet]:
         actions = self.actions()
@@ -258,13 +277,7 @@ class MoveInfoSet(InfoSet):
         return self._children[action]
 
     def is_terminal(self) -> bool:
-        if self._is_final_stage() and self._players_called():
-            return True
-
-        if len(self._history) >= 1 and self._history[-1] == Action.FOLD:
-            return True
-
-        return False
+        return len(self._history) >= 1 and self._history[-1] == Action.FOLD
 
     def encoding(self) -> str:
         actions_prefix = "".join(action.value for action in self._history)
@@ -274,9 +287,6 @@ class MoveInfoSet(InfoSet):
         if self.is_terminal():
             return []
 
-        if self._players_called():
-            return [Action.CHANCE]
-
         actions = []
 
         if self._could_raise():
@@ -284,7 +294,13 @@ class MoveInfoSet(InfoSet):
 
         actions.append(Action.CALL)
 
-        if len(self._history) >= 1 and self._history[-1] == Action.RAISE:
+        if len(self._history) == 0:
+            return actions
+
+        if self._history[-1] == Action.CHANCE and self._stage == Stage.PREFLOP:
+            actions.append(Action.FOLD)
+
+        if self._history[-1] == Action.RAISE:
             actions.append(Action.FOLD)
 
         return actions
@@ -300,19 +316,16 @@ class MoveInfoSet(InfoSet):
 
         opponent = _opponent(self._player)
 
-        if self._history[-1] == Action.FOLD:
-            return sign * self._player_bet(opponent)
+        return sign * self._player_bet(opponent)
 
-        winner = self._bundle.winner_index()
-        loser = _opponent(winner)
-
-        if player == loser:
-            return -self._player_bet(loser)
-
-        return self._player_bet(loser)
+    def is_chance(self) -> bool:
+        return False
 
     def _validate_history(self):
-        if len(self._history) > 0 and self._history[-1] == Action.CHANCE:
+        if len(self._history) == 0:
+            raise InfoSetError("Empty history for Move Info Set not allowed")
+
+        if _players_called(self._history):
             raise InfoSetError("invalid move info set history: invalid action {}".format(self._history[-1].value))
 
     def _generate_children(self, bundle: CardBundle) -> Dict:
@@ -325,7 +338,7 @@ class MoveInfoSet(InfoSet):
 
             child = None
 
-            if action == Action.CHANCE:
+            if _players_called(child_history):
                 child = ChanceInfoSet(child_history, bundle)
             else:
                 child = MoveInfoSet(child_history, bundle)
@@ -337,13 +350,17 @@ class MoveInfoSet(InfoSet):
     def _is_final_stage(self) -> bool:
         return self._stage == Stage.RIVER
 
-    def _players_called(self) -> bool:
-        return len(self._history) >= 2 and self._history[-1] == Action.CALL and self._history[-2] == Action.CALL
-
 
 def create_game_root(bundle: CardBundle):
-    return ChanceInfoSet(history=[Action.CHANCE], bundle=bundle)
+    return ChanceInfoSet(history=[], bundle=bundle)
 
 
 def _opponent(player: int) -> int:
     return 1 - player
+
+
+def _players_called(history: List[Action]) -> bool:
+    if len(history) < 2:
+        return False
+
+    return history[-1] == Action.CALL and history[-2] == Action.CALL
