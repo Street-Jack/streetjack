@@ -8,6 +8,7 @@ treys = "*"
 nose = "*"
 nose-timer = "*"
 nose-cov = "*"
+pyyaml = "*"
 
 [dev-packages]
 black = "*"

@@ -128,7 +128,7 @@ class Evaluator:
         possible_opp_hands = self._card_combinations(excluded_cards=hand + board, tuple_size=2)
 
         num_undrawn_community_cards = MAX_COMMUNITY_CARDS - len(board)
-        community_sample_ratios = [1, 0.1, 0.02]
+        community_sample_ratios = [1, 0.1, 0.005]
         community_sample_ratio = community_sample_ratios[num_undrawn_community_cards]
 
         for opp_hand in possible_opp_hands:

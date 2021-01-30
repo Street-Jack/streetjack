@@ -115,6 +115,9 @@ class InfoSet(ABC):
     def utility(self, player: int) -> int:
         raise NotImplementedError("play method not implemented")
 
+    def curr_player(self) -> int:
+        return self._player
+
     def _parse_stage_history(self) -> None:
         self._stage = self._parse_stage()
 
@@ -346,9 +349,6 @@ class MoveInfoSet(InfoSet):
             children[action] = child
 
         return children
-
-    def _is_final_stage(self) -> bool:
-        return self._stage == Stage.RIVER
 
 
 def create_game_root(bundle: CardBundle):
