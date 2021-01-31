@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 
-from typing import List, Dict
+import random
 from pathlib import Path
+from typing import List, Dict
 
 import yaml
 import treys
@@ -37,6 +38,28 @@ class PokerBot:
                 self._chance_sampling_cfr(root_info_set, trainee, INITIAL_REACH_PROB, INITIAL_REACH_PROB)
 
         print("")
+
+    def play(self, info_set: hulth.InfoSet) -> hulth.InfoSet:
+        strategy = self._avg_strategy(info_set)
+
+        rand_float = random.uniform(0.0, 1.0)
+        prob_sum = 0.0
+
+        play_action = None
+
+        for action in strategy:
+            action_prob = strategy[action]
+            prob_sum += action_prob
+
+            if prob_sum >= rand_float:
+                play_action = action
+                break
+
+        # If not lucky due to floating point precision.
+        if not play_action:
+            return self.play(info_set)
+
+        return info_set.play(play_action)
 
     @staticmethod
     def unmarshal(file_path: Path, evaluator: Evaluator) -> "PokerBot":

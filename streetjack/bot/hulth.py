@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-from abc import ABC
+from abc import ABC, abstractmethod
 from enum import Enum
 from typing import List, Dict
 
@@ -29,6 +29,14 @@ class Action(Enum):
     CALL = "c"
     FOLD = "f"
     CHANCE = ":"
+
+
+ACTION_NAMES = {
+    Action.RAISE: "raise",
+    Action.CALL: "call/check",
+    Action.FOLD: "fold",
+    Action.CHANCE: "chance",
+}
 
 
 class Stage(Enum):
@@ -60,27 +68,29 @@ class CardBundle:
         for i in range(len(self._hands)):
             bucket_indices = dict()
 
-            for key, num_cards in BOARD_CARDS.items():
-                bucket_indices[key] = evaluator.effective_rank(self._hands[i], self._board[:num_cards], MAX_BUCKETS)
+            for key in BOARD_CARDS:
+                stage_board = self.board(stage=key)
+                bucket_indices[key] = evaluator.effective_rank(self._hands[i], stage_board, MAX_BUCKETS)
 
             self._hand_bucket_indices.append(bucket_indices)
 
-        self._hand_strengths = [
-            evaluator.effective_hand_strength(self._hands[0], self._board),
-            evaluator.effective_hand_strength(self._hands[1], self._board),
+        self._hand_ranks = [
+            evaluator.rank(self._hands[SMALL_BLIND], self._board),
+            evaluator.rank(self._hands[BIG_BLIND], self._board),
         ]
 
     def player_hand(self, player_index: int) -> List[int]:
         return self._hands[player_index]
 
-    def board(self) -> List[int]:
-        return self._board
+    def board(self, stage: Stage) -> List[int]:
+        num_cards = BOARD_CARDS[stage]
+        return self._board[:num_cards]
 
     def bucket_index(self, player_index: int, stage: Stage) -> int:
         return self._hand_bucket_indices[player_index][stage]
 
     def winner_index(self) -> int:
-        if self._hand_strengths[0] < self._hand_strengths[1]:
+        if self._hand_ranks[SMALL_BLIND] < self._hand_ranks[BIG_BLIND]:
             return SMALL_BLIND
 
         return BIG_BLIND
@@ -97,26 +107,61 @@ class InfoSet(ABC):
     def history(self) -> List[Action]:
         return self._history
 
+    @abstractmethod
     def play(self, action: Action) -> "InfoSet":
         raise NotImplementedError("play method not implemented")
 
+    @abstractmethod
     def actions(self) -> List[Action]:
         raise NotImplementedError("actions method not implemented")
 
+    @abstractmethod
     def encoding(self) -> str:
         raise NotImplementedError("encoding method not implemented")
 
+    @abstractmethod
     def is_terminal(self) -> bool:
         raise NotImplementedError("is_terminal method not implemented")
 
+    @abstractmethod
     def is_chance(self) -> bool:
         raise NotImplementedError("is_chance method not implemented")
 
+    @abstractmethod
     def utility(self, player: int) -> int:
         raise NotImplementedError("play method not implemented")
 
+    @abstractmethod
+    def winner(self) -> int:
+        raise NotImplementedError("winner method not implemented")
+
     def curr_player(self) -> int:
         return self._player
+
+    def stage(self) -> Stage:
+        return self._stage
+
+    def available_money(self) -> int:
+        return START_MONEY - self._player_bet(self._player)
+
+    def available_money_of_players(self) -> List[int]:
+        player_bets = self._player_bets()
+        available_money = [START_MONEY, START_MONEY]
+
+        for player in [SMALL_BLIND, BIG_BLIND]:
+            available_money[player] -= player_bets[player]
+
+        return available_money
+
+    def pot_money(self) -> int:
+        player_bets = self._player_bets()
+        return player_bets[SMALL_BLIND] + player_bets[BIG_BLIND]
+
+    def last_opponent_action(self) -> int:
+        if len(self._history) > 0:
+            return self._history[-1]
+
+        raise InfoSetError("Tried to access history of first state")
 
     def _parse_stage_history(self) -> None:
         self._stage = self._parse_stage()
@@ -147,7 +192,7 @@ class InfoSet(ABC):
         return (1 + len(self._stage_history)) % 2
 
     def _could_raise(self) -> bool:
-        if self._available_money() < RAISE_AMOUNT:
+        if self.available_money() < RAISE_AMOUNT:
             return False
 
         if Action.RAISE in self._stage_history:
@@ -155,10 +200,11 @@ class InfoSet(ABC):
 
         return True
 
-    def _available_money(self) -> int:
-        return START_MONEY - self._player_bet(self._player)
-
     def _player_bet(self, player: int) -> int:
+        player_bets = self._player_bets()
+        return player_bets[player]
+
+    def _player_bets(self) -> List[int]:
         player_bets = [SMALL_BLIND_BET, BIG_BLIND_BET]
         curr_player = SMALL_BLIND
 
@@ -178,7 +224,7 @@ class InfoSet(ABC):
                 curr_player = SMALL_BLIND
                 continue
 
-            opponent = _opponent(curr_player)
+            opponent = get_opponent(curr_player)
 
             if self._history[i] == Action.RAISE:
                 player_bets[curr_player] = player_bets[opponent] + RAISE_AMOUNT
@@ -187,7 +233,7 @@ class InfoSet(ABC):
 
             curr_player = opponent
 
-        return player_bets[player]
+        return player_bets
 
 
 class ChanceInfoSet(InfoSet):
@@ -223,16 +269,19 @@ class ChanceInfoSet(InfoSet):
         return True
 
     def utility(self, player: int) -> int:
-        if not self.is_terminal():
-            raise InfoSetError("utility cannot be provided by non terminal info set")
-
-        winner = self._bundle.winner_index()
-        loser = _opponent(winner)
+        winner = self.winner()
+        loser = get_opponent(winner)
 
         if player == loser:
             return -self._player_bet(loser)
 
         return self._player_bet(loser)
+
+    def winner(self) -> int:
+        if not self.is_terminal():
+            raise InfoSetError("utility cannot be provided by non terminal info set")
+
+        return self._bundle.winner_index()
 
     def _validate_history(self) -> None:
         if len(self._history) == 0:
@@ -309,17 +358,22 @@ class MoveInfoSet(InfoSet):
         return actions
 
     def utility(self, player: int) -> int:
-        if not self.is_terminal():
-            raise InfoSetError("utility cannot be provided by non terminal info set")
+        winner = self.winner()
 
         sign = 1
 
-        if self._player != player:
+        if winner != player:
             sign = -sign
 
-        opponent = _opponent(self._player)
+        opponent = get_opponent(winner)
 
         return sign * self._player_bet(opponent)
+
+    def winner(self) -> int:
+        if not self.is_terminal():
+            raise InfoSetError("utility cannot be provided by non terminal info set")
+
+        return self._player
 
     def is_chance(self) -> bool:
         return False
@@ -355,7 +409,7 @@ def create_game_root(bundle: CardBundle):
     return ChanceInfoSet(history=[], bundle=bundle)
 
 
-def _opponent(player: int) -> int:
+def get_opponent(player: int) -> int:
     return 1 - player
 
 

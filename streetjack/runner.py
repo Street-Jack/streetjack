@@ -5,6 +5,7 @@ import logging
 import argparse
 
 import streetjack.cmd.train as train
+import streetjack.cmd.play as play
 
 
 def parse_args() -> argparse.Namespace:
@@ -14,6 +15,9 @@ def parse_args() -> argparse.Namespace:
 
     train_parser = subparsers.add_parser(name=train.SUBCMD_NAME)
     train.add_parser_args(train_parser)
+
+    play_parser = subparsers.add_parser(name=play.SUBCMD_NAME)
+    play.add_parser_args(play_parser)
 
     return parser.parse_args()
 
@@ -29,3 +33,5 @@ if __name__ == "__main__":
 
     if args.subparser == train.SUBCMD_NAME:
         train.run(args)
+    elif args.subparser == play.SUBCMD_NAME:
+        play.run(args)

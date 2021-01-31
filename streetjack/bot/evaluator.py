@@ -31,6 +31,9 @@ class Evaluator:
 
         return self._effective_rank_with_board(hand, board, bucket_count)
 
+    def rank(self, hand: List[int], board: List[int]) -> int:
+        return self.evaluator.evaluate(hand, board)
+
     def effective_hand_strength(self, hand: List[int], board: List[int]) -> float:
         hand_strength = self._hand_strenght(hand, board)
         ppot, npot = self._hand_potential(hand, board)
@@ -99,12 +102,12 @@ class Evaluator:
 
     def _hand_strenght(self, hand: List[int], board: List[int]) -> float:
         ahead = tied = behind = 0.0
-        our_rank = self._rank(hand, board)
+        our_rank = self.rank(hand, board)
 
         possible_opp_hands = self._card_combinations(excluded_cards=board + hand, tuple_size=2)
 
         for opp_hand in possible_opp_hands:
-            opp_rank = self._rank(list(opp_hand), board)
+            opp_rank = self.rank(list(opp_hand), board)
 
             if our_rank < opp_rank:
                 ahead += 1.0
@@ -123,7 +126,7 @@ class Evaluator:
         hand_pot = [[0.0, 0.0, 0.0], [0.0, 0.0, 0.0], [0.0, 0.0, 0.0]]
         hp_totals = [0.0, 0.0, 0.0]
 
-        our_rank = self._rank(hand, board)
+        our_rank = self.rank(hand, board)
 
         possible_opp_hands = self._card_combinations(excluded_cards=hand + board, tuple_size=2)
 
@@ -132,7 +135,7 @@ class Evaluator:
         community_sample_ratio = community_sample_ratios[num_undrawn_community_cards]
 
         for opp_hand in possible_opp_hands:
-            opp_rank = self._rank(list(opp_hand), board)
+            opp_rank = self.rank(list(opp_hand), board)
 
             index = 0
             if our_rank < opp_rank:
@@ -153,8 +156,8 @@ class Evaluator:
 
                 new_board = board + list(community_combination)
 
-                our_best = self._rank(hand, new_board)
-                opp_best = self._rank(list(opp_hand), new_board)
+                our_best = self.rank(hand, new_board)
+                opp_best = self.rank(list(opp_hand), new_board)
 
                 if our_best < opp_best:
                     hand_pot[index][ahead] += 1.0
@@ -188,6 +191,3 @@ class Evaluator:
 
         combos = list(itertools.combinations(deck_as_set, tuple_size))
         return random.sample(combos, int(len(combos) * sample_size_ratio))
-
-    def _rank(self, hand: List[int], board: List[int]) -> int:
-        return self.evaluator.evaluate(hand, board)

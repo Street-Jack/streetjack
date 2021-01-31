@@ -59,8 +59,8 @@ class TestCardBundle(unittest.TestCase):
 
         mock_evaluator.effective_rank = MagicMock(return_value=9)
 
-        mock_evaluator.effective_hand_strength = MagicMock()
-        mock_evaluator.effective_hand_strength.side_effect = hand_strengths
+        mock_evaluator.rank = MagicMock()
+        mock_evaluator.rank.side_effect = hand_strengths
 
         return mock_evaluator
 
