@@ -4,7 +4,7 @@ import unittest
 
 import treys
 
-from streetjack.evaluator import Evaluator
+from streetjack.bot.evaluator import Evaluator
 
 
 class TestEvaluator(unittest.TestCase):

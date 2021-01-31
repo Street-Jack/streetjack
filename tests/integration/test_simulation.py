@@ -2,9 +2,9 @@
 
 import unittest
 
-from streetjack.evaluator import Evaluator
-import streetjack.hulth as hulth
-from streetjack.hulth import Action, CardBundle, InfoSet, ChanceInfoSet
+from streetjack.bot.evaluator import Evaluator
+import streetjack.bot.hulth as hulth
+from streetjack.bot.hulth import Action, CardBundle, InfoSet, ChanceInfoSet
 
 import tests.util.common as common
 

@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
 
 from typing import List, Dict
+from pathlib import Path
 
 import yaml
 import treys
 
-import streetjack.hulth as hulth
-from streetjack.evaluator import Evaluator
+import streetjack.bot.hulth as hulth
+from streetjack.bot.evaluator import Evaluator
 
 
 INITIAL_REACH_PROB = 1.0
@@ -38,8 +39,8 @@ class PokerBot:
         print("")
 
     @staticmethod
-    def unmarshal(file_name: str, evaluator: Evaluator) -> "PokerBot":
-        with open(file_name, "r") as dump_file:
+    def unmarshal(file_path: Path, evaluator: Evaluator) -> "PokerBot":
+        with open(file_path, "r") as dump_file:
             bot_as_dict = yaml.load(dump_file, Loader=yaml.Loader)
 
             bot = PokerBot(evaluator)
@@ -48,8 +49,8 @@ class PokerBot:
 
             return bot
 
-    def marshal(self, file_name: str) -> None:
-        with open(file_name, "w") as dump_file:
+    def marshal(self, file_path: Path) -> None:
+        with open(file_path, "w") as dump_file:
             yaml.dump(
                 {
                     CUM_REGRETS_FIELD: self._cum_regrets,
@@ -176,15 +177,3 @@ class PokerBot:
                 avg_strategy[action] = 1 / len(actions)
 
         return avg_strategy
-
-
-if __name__ == "__main__":
-    e = Evaluator()
-    b = PokerBot(e)
-
-    b.train(50)
-    b.marshal("dump.yml")
-
-    # copy_bot = PokerBot.unmarshal("dump.yml", evaluator)
-
-    # print(copy_bot._cum_strategy)

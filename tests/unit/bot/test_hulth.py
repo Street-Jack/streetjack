@@ -4,7 +4,7 @@ import unittest
 from unittest.mock import MagicMock
 from typing import List
 
-from streetjack.hulth import CardBundle, InfoSet, Stage, ChanceInfoSet, MoveInfoSet, Action, InfoSetError
+from streetjack.bot.hulth import CardBundle, InfoSet, Stage, ChanceInfoSet, MoveInfoSet, Action, InfoSetError
 import tests.util.common as common
 
 

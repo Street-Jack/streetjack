@@ -6,7 +6,7 @@ from typing import List, Dict
 
 from treys import Deck
 
-from streetjack.evaluator import Evaluator
+from streetjack.bot.evaluator import Evaluator
 
 
 MAX_BUCKETS = 10
