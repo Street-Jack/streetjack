@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+import random
 from abc import ABC, abstractmethod
 from enum import Enum
 from typing import List, Dict
@@ -98,6 +99,63 @@ class CardBundle:
             return SMALL_BLIND
 
         return BIG_BLIND
+
+
+class FakeCardBundle(CardBundle):
+    def __init__(self, deck: Deck, evaluator: Evaluator):
+        self._deck = deck
+
+        self._hands = [deck.draw(2), deck.draw(2)]
+        self._board = deck.draw(5)
+
+        self._hand_bucket_indices = []
+
+        for _ in range(len([SMALL_BLIND, BIG_BLIND])):
+            bucket_indices = dict()
+
+            bucket_indices[Stage.PREFLOP] = random.randint(0, MAX_BUCKETS - 1)
+            prev_stage = Stage.PREFLOP
+
+            # Apply deviance with normal distribution.
+            for key in [Stage.FLOP, Stage.TURN, Stage.RIVER]:
+                deviance = FakeCardBundle.rand_deviance()
+                bucket_indices[key] = min(max(bucket_indices[prev_stage] + deviance, 0), MAX_BUCKETS - 1)
+
+            bucket_indices[Stage.SHOWDOWN] = bucket_indices[Stage.RIVER]
+
+            self._hand_bucket_indices.append(bucket_indices)
+
+        small_blind_final_bucket = self.bucket_index(SMALL_BLIND, Stage.SHOWDOWN)
+        big_blind_final_bucket = self.bucket_index(BIG_BLIND, Stage.SHOWDOWN)
+
+        self._hand_ranks = [0, 0]
+        winner = random.randrange(2)
+
+        if small_blind_final_bucket > big_blind_final_bucket:
+            winner = SMALL_BLIND
+
+        if small_blind_final_bucket < big_blind_final_bucket:
+            winner = BIG_BLIND
+
+        self._hand_ranks[winner] += 1
+
+    @staticmethod
+    def rand_deviance():
+        # -1: 1/7, 0: 3/7, 1: 2/7, 2: 1/7
+        upper_bound = 6
+        lower_bound = 0
+        uniform_deviance = random.randint(lower_bound, upper_bound)
+
+        if uniform_deviance == 0:
+            return -1
+
+        if 1 <= uniform_deviance <= 3:
+            return 0
+
+        if 4 <= uniform_deviance <= 5:
+            return 1
+
+        return 2
 
 
 class InfoSet(ABC):

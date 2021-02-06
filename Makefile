@@ -35,6 +35,6 @@ fmt:
 .PHONY: lint
 lint:
 	@echo "\033[0;33mLinting streetjack package...\033[0m"
-	@pylint streetjack --max-line-length=120 --disable=missing-docstring --disable=too-many-locals
+	@pylint streetjack --max-line-length=120 --disable=missing-docstring --disable=too-many-locals --disable=super-init-not-called
 	@echo "\033[0;33mLinting tests package...\033[0m"
 	@pylint tests --max-line-length=120 --disable=missing-docstring --disable=too-many-locals --disable=too-many-public-methods

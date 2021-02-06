@@ -12,6 +12,7 @@ from streetjack.bot.evaluator import Evaluator
 
 
 INITIAL_REACH_PROB = 1.0
+CHECKPOINT_DIST = 15
 CUM_REGRETS_FIELD = "cum_regrets"
 CUM_STRATEGY_FIELD = "cum_strategy"
 
@@ -26,18 +27,24 @@ class PokerBot:
     def train(self, num_games: int) -> None:
         print("Training poker bot with \033[0;32m{}\033[0m games...".format(num_games))
 
-        for _ in range(num_games):
-            print("\033[0;33m\u2022\033[0m", end="", flush=True)
+        prev_checkpoint = -CHECKPOINT_DIST - 1
+
+        for i in range(num_games):
+            if i > prev_checkpoint + CHECKPOINT_DIST:
+                prev_checkpoint = i
+                percent_complete = (i / num_games) * 100
+                _print_progress(percent_complete)
 
             deck = treys.Deck()
-            bundle = hulth.CardBundle(deck, self._evaluator)
+            bundle = hulth.FakeCardBundle(deck, self._evaluator)
 
             root_info_set = hulth.create_game_root(bundle)
 
             for trainee in [hulth.SMALL_BLIND, hulth.BIG_BLIND]:
                 self._chance_sampling_cfr(root_info_set, trainee, INITIAL_REACH_PROB, INITIAL_REACH_PROB)
 
-        print("")
+        _print_progress(percent_complete=100.0)
+        print()
 
     def play(self, info_set: hulth.InfoSet) -> hulth.InfoSet:
         strategy = self._avg_strategy(info_set)
@@ -200,3 +207,7 @@ class PokerBot:
                 avg_strategy[action] = 1 / len(actions)
 
         return avg_strategy
+
+
+def _print_progress(percent_complete: float):
+    print("\033[0;32mProgress {}%\033[0;0m".format(int(percent_complete)), end="\r")
