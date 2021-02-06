@@ -6,6 +6,7 @@ import argparse
 
 import streetjack.cmd.train as train
 import streetjack.cmd.play as play
+import streetjack.cmd.kombat as kombat
 
 
 def parse_args() -> argparse.Namespace:
@@ -18,6 +19,9 @@ def parse_args() -> argparse.Namespace:
 
     play_parser = subparsers.add_parser(name=play.SUBCMD_NAME)
     play.add_parser_args(play_parser)
+
+    kombat_parser = subparsers.add_parser(name=kombat.SUBCMD_NAME)
+    kombat.add_parser_args(kombat_parser)
 
     return parser.parse_args()
 
@@ -35,3 +39,5 @@ if __name__ == "__main__":
         train.run(args)
     elif args.subparser == play.SUBCMD_NAME:
         play.run(args)
+    elif args.subparser == kombat.SUBCMD_NAME:
+        kombat.run(args)

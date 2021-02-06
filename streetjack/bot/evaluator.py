@@ -185,6 +185,6 @@ class Evaluator:
             deck_as_set.remove(card)
 
         combos = list(itertools.combinations(deck_as_set, tuple_size))
-        sample_size = min(len(combos), 100)
+        sample_size = min(len(combos), 75)
 
         return random.sample(combos, sample_size)
