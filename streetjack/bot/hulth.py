@@ -9,7 +9,7 @@ from treys import Deck
 from streetjack.bot.evaluator import Evaluator
 
 
-MAX_BUCKETS = 10
+MAX_BUCKETS = 8
 START_MONEY = 80
 SMALL_BLIND_BET = 10
 BIG_BLIND_BET = 20
@@ -69,6 +69,10 @@ class CardBundle:
             bucket_indices = dict()
 
             for key in BOARD_CARDS:
+                if key == Stage.SHOWDOWN:
+                    bucket_indices[key] = bucket_indices[Stage.RIVER]
+                    continue
+
                 stage_board = self.board(stage=key)
                 bucket_indices[key] = evaluator.effective_rank(self._hands[i], stage_board, MAX_BUCKETS)
 

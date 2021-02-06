@@ -18,7 +18,7 @@ CHEN_KING_RANK = 8
 CHEN_QUEEN_RANK = 7
 CHEN_JACK_RANK = 6
 
-RANK_OFFSET = 2
+CHEN_RANK_OFFSET = 2
 
 
 class Evaluator:
@@ -94,7 +94,7 @@ class Evaluator:
         if card_rank == jack_rank:
             return CHEN_JACK_RANK
 
-        return (RANK_OFFSET + card_rank) / 2
+        return (CHEN_RANK_OFFSET + card_rank) / 2
 
     def _effective_rank_with_board(self, hand: List[int], board: List[int], bucket_count: int) -> int:
         ehs = self.effective_hand_strength(hand, board)
@@ -131,8 +131,6 @@ class Evaluator:
         possible_opp_hands = self._card_combinations(excluded_cards=hand + board, tuple_size=2)
 
         num_undrawn_community_cards = MAX_COMMUNITY_CARDS - len(board)
-        community_sample_ratios = [1, 0.1, 0.005]
-        community_sample_ratio = community_sample_ratios[num_undrawn_community_cards]
 
         for opp_hand in possible_opp_hands:
             opp_rank = self.rank(list(opp_hand), board)
@@ -148,7 +146,6 @@ class Evaluator:
             community_combinations = self._card_combinations(
                 excluded_cards=hand + board + list(opp_hand),
                 tuple_size=num_undrawn_community_cards,
-                sample_size_ratio=community_sample_ratio,
             )
 
             for community_combination in community_combinations:
@@ -179,9 +176,7 @@ class Evaluator:
         return ppot, npot
 
     @staticmethod
-    def _card_combinations(
-        excluded_cards: List[int], tuple_size: int, sample_size_ratio: float = 1.0
-    ) -> List[Tuple[int]]:
+    def _card_combinations(excluded_cards: List[int], tuple_size: int) -> List[Tuple[int]]:
         deck = treys.Deck()
         cards = deck.draw(MAX_CARDS)
         deck_as_set = set(cards)
@@ -190,4 +185,6 @@ class Evaluator:
             deck_as_set.remove(card)
 
         combos = list(itertools.combinations(deck_as_set, tuple_size))
-        return random.sample(combos, int(len(combos) * sample_size_ratio))
+        sample_size = min(len(combos), 100)
+
+        return random.sample(combos, sample_size)

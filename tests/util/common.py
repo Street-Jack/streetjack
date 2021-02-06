@@ -8,7 +8,7 @@ ROYAL_FLUSH_HAND = [Card.new("Ac"), Card.new("Kc")]
 STRAIGHT_FLUSH_HAND = [Card.new("9c"), Card.new("8c")]
 BOARD = [Card.new("Qc"), Card.new("Jc"), Card.new("Tc"), Card.new("2c"), Card.new("7c")]
 
-MAX_BUCKET_INDEX = 9
+MAX_BUCKET_INDEX = 7
 
 
 def mock_deck() -> MagicMock:

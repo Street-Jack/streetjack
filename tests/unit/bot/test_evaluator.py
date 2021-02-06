@@ -105,12 +105,15 @@ class TestEvaluator(unittest.TestCase):
 
         royal_flush_strength = self._eval.effective_hand_strength(royal_flush_hand, board)
         straight_flush_strength = self._eval.effective_hand_strength(straight_flush_hand, board)
+        allowable_diff = 0.000001
 
-        self.assertGreater(royal_flush_strength, straight_flush_strength)
+        self.assertGreater(allowable_diff, abs(royal_flush_strength - straight_flush_strength))
 
     def _assert_rank_with_board(self, hand, board, expected_rank):
         rank = self._effective_rank(hand, board)
-        self.assertEqual(rank, expected_rank)
+        allowable_diff = 1
+
+        self.assertGreaterEqual(allowable_diff, abs(rank - expected_rank))
 
     def _effective_rank(self, hand, board):
         return self._eval.effective_rank(hand, board, bucket_count=self.BUCKET_COUNT)
