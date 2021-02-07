@@ -39,7 +39,7 @@ def run(args: argparse.Namespace) -> None:
         cum_scorpion_utility += small_blind_utility
         cum_subzero_utility += big_blind_utility
 
-        small_blind_utility, big_blind_utility = _play_game(scorpion, subzero, bundle)
+        small_blind_utility, big_blind_utility = _play_game(subzero, scorpion, bundle)
         cum_subzero_utility += small_blind_utility
         cum_scorpion_utility += big_blind_utility
 
@@ -50,7 +50,7 @@ def run(args: argparse.Namespace) -> None:
     print("Subzero utility rating {}".format(norm_subzero_utility))
 
     if abs(norm_scorpion_utility) > STATISTICALLY_MEANINGLESS_DIFF:
-        print("No strategy is better than the other.")
+        print("There is a better strategy.")
     else:
         print("There is a meaningful statistical diff between both of the strategies.")
 

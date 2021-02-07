@@ -11,11 +11,12 @@ from streetjack.bot.evaluator import Evaluator
 
 
 MAX_BUCKETS = 8
-START_MONEY = 80
+START_MONEY = 140
 SMALL_BLIND_BET = 10
 BIG_BLIND_BET = 20
 RAISE_AMOUNT = BIG_BLIND_BET
 CHANCE_NODE_ENCODING = "."
+MAX_RAISES_PER_STAGE = 2
 
 SMALL_BLIND = 0
 BIG_BLIND = 1
@@ -257,7 +258,13 @@ class InfoSet(ABC):
         if self.available_money() < RAISE_AMOUNT:
             return False
 
-        if Action.RAISE in self._stage_history:
+        raises = 0
+
+        for action in self._stage_history:
+            if action == Action.RAISE:
+                raises += 1
+
+        if raises >= MAX_RAISES_PER_STAGE:
             return False
 
         return True
@@ -411,11 +418,7 @@ class MoveInfoSet(InfoSet):
         if len(self._history) == 0:
             return actions
 
-        if self._history[-1] == Action.CHANCE and self._stage == Stage.PREFLOP:
-            actions.append(Action.FOLD)
-
-        if self._history[-1] == Action.RAISE:
-            actions.append(Action.FOLD)
+        actions.append(Action.FOLD)
 
         return actions
 

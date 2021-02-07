@@ -183,30 +183,36 @@ class TestMoveInfoSet(TestInfoSet):
     def test_big_blind_actions_after_small_blind_call(self) -> None:
         self._assert_available_actions(
             history=[Action.CHANCE, Action.CALL],
-            expected_actions=[Action.RAISE, Action.CALL],
+            expected_actions=[Action.RAISE, Action.CALL, Action.FOLD],
         )
 
     def test_big_blind_actions_after_small_blind_raise(self) -> None:
         self._assert_available_actions(
             history=[Action.CHANCE, Action.RAISE],
+            expected_actions=[Action.RAISE, Action.CALL, Action.FOLD],
+        )
+
+    def test_small_blind_impossible_raise_when_chips_are_exhausted(self) -> None:
+        raising_stage = [Action.RAISE, Action.RAISE, Action.CALL, Action.CALL, Action.CHANCE]
+
+        # raises -> 10, 10+20 + 20 = 50, 20 + 20 = 40, 20 + 20 = 40, 20 + 20 = 40
+        self._assert_available_actions(
+            history=[Action.CHANCE] + raising_stage * 3,
             expected_actions=[Action.CALL, Action.FOLD],
         )
 
-    def test_small_blind_impossible_raise(self) -> None:
-        raising_stage = [Action.RAISE, Action.CALL, Action.CALL, Action.CHANCE]
-
-        # raises -> 10, 10+20, 20, 20, 20
-        self._assert_available_actions(
-            history=[Action.CHANCE] + raising_stage * 3,
-            expected_actions=[Action.CALL],
-        )
-
-    def test_big_blind_impossible_raise(self) -> None:
-        raising_stage = [Action.RAISE, Action.CALL, Action.CALL, Action.CHANCE]
+    def test_big_blind_impossible_raise_when_chips_are_exhausted(self) -> None:
+        raising_stage = [Action.RAISE, Action.RAISE, Action.CALL, Action.CALL, Action.CHANCE]
 
         self._assert_available_actions(
             history=[Action.CHANCE] + raising_stage * 3 + [Action.CALL],
-            expected_actions=[Action.CALL],
+            expected_actions=[Action.CALL, Action.FOLD],
+        )
+
+    def test_two_raises_per_stage(self) -> None:
+        self._assert_available_actions(
+            history=[Action.RAISE, Action.CALL],
+            expected_actions=[Action.RAISE, Action.CALL, Action.FOLD],
         )
 
     def test_terminal_actions(self) -> None:
@@ -262,7 +268,7 @@ class TestMoveInfoSet(TestInfoSet):
     def test_small_blind_fold_forbidden_in_later_game_stage(self) -> None:
         self._assert_available_actions(
             history=[Action.CHANCE, Action.CALL, Action.CALL, Action.CHANCE],
-            expected_actions=[Action.RAISE, Action.CALL],
+            expected_actions=[Action.RAISE, Action.CALL, Action.FOLD],
         )
 
     def test_chance_child(self) -> None:
@@ -279,7 +285,7 @@ class TestMoveInfoSet(TestInfoSet):
         self.assertTrue(child.is_terminal())
 
     def test_play_invalid_action(self) -> None:
-        info_set = MoveInfoSet(history=[Action.CHANCE, Action.RAISE], bundle=self._bundle)
+        info_set = MoveInfoSet(history=[Action.CHANCE, Action.RAISE, Action.RAISE], bundle=self._bundle)
 
         with self.assertRaises(InfoSetError):
             info_set.play(Action.RAISE)
